@@ -1575,22 +1575,48 @@ async function loadVaultHistory() {
           <thead>
             <tr>
               <th>Data</th>
-              <th>Acquirente</th>
+              <th>Acquirente / Ordine</th>
               <th>Articolo</th>
-              <th>Chiave Inviata</th>
-              <th>Stato</th>
+              <th>Chiave Licenza Inviata</th>
+              <th>Stato Consegna</th>
             </tr>
           </thead>
           <tbody>
-            ${data.history.map(h => `
-              <tr>
-                <td>${new Date(h.deliveredAt || h.processedAt).toLocaleString()}</td>
-                <td><strong>${escapeHtml(h.buyerId)}</strong><br><span style="font-size:0.7rem; color:var(--text-muted);">#${escapeHtml(h.orderId)}</span></td>
-                <td>${escapeHtml(h.title)}</td>
-                <td><code style="color:#38bdf8;">${escapeHtml(h.keyUsed)}</code></td>
-                <td>${h.messageSent ? '✅ Inviato' : '⚠️ Errore'} ${h.markedShipped ? '📦 Spedito' : ''}</td>
-              </tr>
-            `).join('')}
+            ${data.history.map(h => {
+              let statusHtml = '';
+              if (h.skipped) {
+                statusHtml = `<span style="color: var(--text-muted); font-size: 0.75rem;">⏭️ ${escapeHtml(h.reason || 'Archiviato')}</span>`;
+              } else if (h.messageSent) {
+                statusHtml = `<span style="color: #4ade80; font-weight: 700;">✅ Inviata</span> ${h.markedShipped ? '<span style="color: #38bdf8; font-weight: 600;">📦 Spedito</span>' : ''}`;
+              } else {
+                statusHtml = `<span style="color: #f87171; font-weight: 600;">⚠️ Invio fallito</span>`;
+              }
+
+              let keyHtml = '<span style="color: var(--text-muted); font-size: 0.75rem;">-</span>';
+              if (h.keyUsed) {
+                keyHtml = `
+                  <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 3px 8px; border-radius: 6px;">
+                    <code style="color: #38bdf8; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.5px;">${escapeHtml(h.keyUsed)}</code>
+                    <button type="button" style="background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0;" title="Copia Chiave" onclick="navigator.clipboard.writeText('${escapeHtml(h.keyUsed)}'); showToast('📋 Chiave copiata negli appunti!', 'info');">📋</button>
+                  </div>
+                `;
+              }
+
+              return `
+                <tr>
+                  <td style="white-space: nowrap; font-size: 0.75rem; color: var(--text-muted);">${new Date(h.deliveredAt || h.processedAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                  <td>
+                    <strong>${escapeHtml(h.buyerId || 'Acquirente')}</strong><br>
+                    <span style="font-size:0.72rem; color:var(--text-muted);">#${escapeHtml(h.orderId)}</span>
+                  </td>
+                  <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(h.title)}">
+                    ${escapeHtml(h.title)}
+                  </td>
+                  <td>${keyHtml}</td>
+                  <td>${statusHtml}</td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       `;
