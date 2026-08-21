@@ -408,7 +408,8 @@ formConfig.addEventListener('submit', async (e) => {
     env: cfgEnv.value,
     siteId: cfgSiteId.value,
     autoRestockInterval: cfgInterval.value,
-    port: cfgPort.value
+    port: cfgPort.value,
+    adminPassword: document.getElementById('cfgAdminPassword') ? document.getElementById('cfgAdminPassword').value.trim() : ''
   };
 
   btnSaveConfigSubmit.disabled = true;

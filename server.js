@@ -330,7 +330,7 @@ app.post('/api/oauth/exchange-code', async (req, res) => {
  */
 app.post('/api/config/save', async (req, res) => {
   try {
-    const { clientId, clientSecret, refreshToken, env, siteId, port, autoRestockInterval } = req.body;
+    const { clientId, clientSecret, refreshToken, env, siteId, port, autoRestockInterval, adminPassword } = req.body;
 
     if (!clientId || !clientSecret || !refreshToken) {
       return res.status(400).json({ success: false, error: 'Tutti i campi credenziali sono obbligatori' });
@@ -343,6 +343,7 @@ app.post('/api/config/save', async (req, res) => {
     const cleanSiteId = siteId || '101';
     const cleanPort = port || '3000';
     const cleanInterval = autoRestockInterval || '15';
+    const cleanPassword = (adminPassword && adminPassword.trim()) ? adminPassword.trim() : config.adminPassword;
 
     const envContent = `# ==========================================
 # CONFIGURAZIONE CREDENZIALI EBAY API (Generato via Web App)
@@ -355,11 +356,12 @@ EBAY_ENV=${cleanEnv}
 EBAY_SITE_ID=${cleanSiteId}
 
 # ==========================================
-# CONFIGURAZIONE SERVER & AUTOMAZIONE
+# CONFIGURAZIONE SERVER & SICUREZZA
 # ==========================================
 
 PORT=${cleanPort}
 AUTO_RESTOCK_INTERVAL_MINUTES=${cleanInterval}
+ADMIN_PASSWORD="${cleanPassword}"
 `;
 
     fs.writeFileSync(ENV_PATH, envContent, 'utf8');
@@ -372,6 +374,7 @@ AUTO_RESTOCK_INTERVAL_MINUTES=${cleanInterval}
     process.env.EBAY_SITE_ID = cleanSiteId;
     process.env.PORT = cleanPort;
     process.env.AUTO_RESTOCK_INTERVAL_MINUTES = cleanInterval;
+    process.env.ADMIN_PASSWORD = cleanPassword;
 
     // Aggiorna oggetto config
     config.clientId = cleanClientId;
@@ -381,6 +384,7 @@ AUTO_RESTOCK_INTERVAL_MINUTES=${cleanInterval}
     config.envName = cleanEnv;
     config.siteId = cleanSiteId;
     config.autoRestockInterval = parseInt(cleanInterval, 10);
+    config.adminPassword = cleanPassword;
     config.oauthUrl = config.isSandbox
       ? 'https://api.sandbox.ebay.com/identity/v1/oauth2/token'
       : 'https://api.ebay.com/identity/v1/oauth2/token';
