@@ -7,12 +7,10 @@ node_modules/
 *.txt
 "ebay developers.txt"
 
-# Dati e log locali
+# Log locali
 *.log
-keys_vault.json
-processed_orders.json
-restock_rules.json
 
 # File di sistema e temporanei
 .DS_Store
 Thumbs.db
+

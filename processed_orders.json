@@ -1,0 +1,91 @@
+{
+  "26-15027-79395_10083037536726": {
+    "orderId": "26-15027-79395",
+    "transactionId": "10083037536726",
+    "buyerId": "oldtekmn",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "varName": "",
+    "keyUsed": "4N9BX-6DB2B-8MC2D-JVXQ3-H22KG",
+    "messageSent": true,
+    "markedShipped": true,
+    "deliveredAt": "2026-08-21T16:12:51.779Z",
+    "processedAt": "2026-08-21T16:12:51.779Z"
+  },
+  "10-15056-52198_10084294247310": {
+    "orderId": "10-15056-52198",
+    "transactionId": "10084294247310",
+    "buyerId": "cri_755632",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "varName": "",
+    "keyUsed": "JWK99-BN32K-HFQ3X-PG663-GF4C6",
+    "messageSent": true,
+    "markedShipped": true,
+    "deliveredAt": "2026-08-21T16:12:53.966Z",
+    "processedAt": "2026-08-21T16:12:53.966Z"
+  },
+  "21-15037-27756_10088394676721": {
+    "orderId": "21-15037-27756",
+    "transactionId": "10088394676721",
+    "buyerId": "massmasales",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "skipped": true,
+    "reason": "Ordine già evaso/spedito su eBay in precedenza",
+    "processedAt": "2026-08-21T19:04:59.826Z"
+  },
+  "03-15070-96453_10084167449903": {
+    "orderId": "03-15070-96453",
+    "transactionId": "10084167449903",
+    "buyerId": "falcio59",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "skipped": true,
+    "reason": "Ordine già evaso/spedito su eBay in precedenza",
+    "processedAt": "2026-08-21T19:04:59.827Z"
+  },
+  "23-15037-69923_10083448893323": {
+    "orderId": "23-15037-69923",
+    "transactionId": "10083448893323",
+    "buyerId": "eugenio21470",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "skipped": true,
+    "reason": "Ordine già evaso/spedito su eBay in precedenza",
+    "processedAt": "2026-08-21T19:04:59.827Z"
+  },
+  "27-15031-06433_10087417088427": {
+    "orderId": "27-15031-06433",
+    "transactionId": "10087417088427",
+    "buyerId": "cetriolonebobby",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "skipped": true,
+    "reason": "Ordine già evaso/spedito su eBay in precedenza",
+    "processedAt": "2026-08-21T19:04:59.827Z"
+  },
+  "11-15059-86597_10084372830611": {
+    "orderId": "11-15059-86597",
+    "transactionId": "10084372830611",
+    "buyerId": "sariuol",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "skipped": true,
+    "reason": "Ordine già evaso/spedito su eBay in precedenza",
+    "processedAt": "2026-08-21T19:04:59.828Z"
+  },
+  "24-15052-59686_10083251741324": {
+    "orderId": "24-15052-59686",
+    "transactionId": "10083251741324",
+    "buyerId": "rodolfrassen-0",
+    "itemId": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "varName": "",
+    "keyUsed": "4N9BX-6DB2B-8MC2D-JVXQ3-H22KG",
+    "messageSent": true,
+    "markedShipped": true,
+    "deliveredAt": "2026-08-21T19:34:31.620Z",
+    "processedAt": "2026-08-21T19:34:31.620Z"
+  }
+}

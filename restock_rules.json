@@ -1,0 +1,18 @@
+{
+  "global": {
+    "defaultDelayMinutes": 0,
+    "defaultTargetQty": 1,
+    "autoRestockEnabled": true
+  },
+  "items": {
+    "377432798834": {
+      "enabled": true,
+      "delayMinutes": 10,
+      "targetQty": 1,
+      "title": "Windows 11 Pro 1pc ",
+      "sku": "",
+      "updatedAt": "2026-08-20T18:40:19.007Z"
+    }
+  },
+  "pendingQueue": {}
+}

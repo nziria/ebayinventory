@@ -1,0 +1,28 @@
+{
+  "377432798834": {
+    "targetKey": "377432798834",
+    "title": "Windows 11 Pro 1pc ",
+    "sku": "",
+    "enabled": true,
+    "autoShip": true,
+    "template": "Dear Customer, \n\nThank you very much for your purchase of {PRODUCT_NAME}!  \n\nPlease find your activation key below: \n\nProduct Key:  \n{KEY} \n\nActivation Instructions: \n\nGo to Settings > System > Activation. \n\nSelect Change product key. \n\nEnter the key provided above and follow the on-screen instructions. \n\nIf you encounter any issues or have any questions regarding the activation, please do not hesitate to contact me directly through eBay messages. I am here to assist you and ensure everything works perfectly. \n\nIf you are satisfied with your purchase, I would kindly appreciate it if you could leave me positive feedback. It is very important to me and greatly appreciated. \n\nThank you again for your trust and have a wonderful day! \n\nBest regards,",
+    "keys": [
+      {
+        "id": "mt35au09t3pi0",
+        "code": "4N9BX-6DB2B-8MC2D-JVXQ3-H22KG",
+        "status": "delivered",
+        "addedAt": "2026-08-21T16:09:59.913Z",
+        "deliveredAt": "2026-08-21T19:34:28.716Z",
+        "orderId": "24-15052-59686",
+        "buyerId": "rodolfrassen-0"
+      },
+      {
+        "id": "mt35au09gwb6l",
+        "code": "JWK99-BN32K-HFQ3X-PG663-GF4C6",
+        "status": "available",
+        "addedAt": "2026-08-21T16:09:59.913Z"
+      }
+    ],
+    "updatedAt": "2026-08-21T19:07:00.000Z"
+  }
+}
