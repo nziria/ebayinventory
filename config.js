@@ -11,6 +11,7 @@ const config = {
   siteId: process.env.EBAY_SITE_ID || '101', // 101 = eBay Italia
   port: parseInt(process.env.PORT || '3000', 10),
   autoRestockInterval: parseInt(process.env.AUTO_RESTOCK_INTERVAL_MINUTES || '15', 10),
+  adminPassword: process.env.ADMIN_PASSWORD || 'admin123',
   
   // Endpoints API eBay
   oauthUrl: isSandbox

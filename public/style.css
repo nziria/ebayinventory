@@ -1502,5 +1502,66 @@ input:checked + .slider:before {
   color: #fca5a5 !important;
 }
 
+/* ==========================================
+   AUTH LOCK SCREEN & LOGIN STYLES
+   ========================================== */
+.auth-lock-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 17, 32, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+}
+
+.auth-lock-screen.hidden {
+  display: none !important;
+}
+
+.auth-card {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 35px rgba(139, 92, 246, 0.15);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 28px;
+  text-align: center;
+  animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-icon-circle {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c4b5fd;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
+}
+
+.auth-card h2 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.auth-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+
+
 
 

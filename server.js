@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const config = require('./config');
 const ebayApi = require('./ebay_api');
 const monitor = require('./monitor');
@@ -16,11 +17,98 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const ENV_PATH = path.join(__dirname, '.env');
 
+// ==========================================
+// GESTIONE AUTENTICAZIONE E SESSIONI
+// ==========================================
+const activeSessions = new Set();
+
+function generateAuthToken() {
+  const token = crypto.randomBytes(32).toString('hex');
+  activeSessions.add(token);
+  return token;
+}
+
+function isValidToken(token) {
+  if (!token) return false;
+  return activeSessions.has(token);
+}
+
+function requireAuth(req, res, next) {
+  const token = req.headers['x-auth-token'] || req.query.token;
+  if (!isValidToken(token)) {
+    return res.status(401).json({ success: false, error: 'Non autorizzato. Inserisci la password.' });
+  }
+  next();
+}
+
+/**
+ * POST /api/auth/login
+ * Verifica la password e restituisce un token di sessione
+ */
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body;
+  const currentPassword = config.adminPassword || 'admin123';
+
+  if (!password || String(password).trim() !== String(currentPassword).trim()) {
+    return res.status(401).json({ success: false, error: 'Password errata. Riprova.' });
+  }
+
+  const token = generateAuthToken();
+  res.json({ success: true, token, message: 'Accesso eseguito con successo!' });
+});
+
+/**
+ * GET /api/auth/verify
+ * Verifica se il token salvato nel browser è ancora valido
+ */
+app.get('/api/auth/verify', (req, res) => {
+  const token = req.headers['x-auth-token'] || req.query.token;
+  const valid = isValidToken(token);
+  res.json({ success: valid, authenticated: valid });
+});
+
+/**
+ * POST /api/auth/change-password
+ */
+app.post('/api/auth/change-password', requireAuth, (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ success: false, error: 'La password deve contenere almeno 4 caratteri' });
+  }
+
+  config.adminPassword = newPassword.trim();
+  updateEnvFile('ADMIN_PASSWORD', newPassword.trim());
+  res.json({ success: true, message: 'Password aggiornata con successo!' });
+});
+
+/**
+ * POST /api/auth/logout
+ */
+app.post('/api/auth/logout', (req, res) => {
+  const token = req.headers['x-auth-token'];
+  if (token) activeSessions.delete(token);
+  res.json({ success: true });
+});
+
 /**
  * GET /api/status
- * Restituisce stato generale, eBay, monitor e configurazione
+ * Restituisce stato generale. Se non autenticato, restituisce solo info di salute per cron-job
  */
 app.get('/api/status', async (req, res) => {
+  const token = req.headers['x-auth-token'] || req.query.token;
+  const isAuthenticated = isValidToken(token);
+
+  if (!isAuthenticated) {
+    // Risposta pubblica per cron-job.org / health-check senza dati sensibili
+    return res.json({
+      ok: true,
+      service: 'eBay Inventory Automation',
+      status: 'active',
+      authenticated: false,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   const isConfigured = config.isConfigured();
   const monitorStatus = monitor.getStatus();
 
@@ -37,6 +125,8 @@ app.get('/api/status', async (req, res) => {
   }
 
   res.json({
+    ok: true,
+    authenticated: true,
     isConfigured,
     environment: config.envName,
     siteId: config.siteId,
@@ -48,6 +138,9 @@ app.get('/api/status', async (req, res) => {
     }
   });
 });
+
+// Tutte le rotte API successive richiedono autenticazione
+app.use('/api', requireAuth);
 
 /**
  * GET /api/config

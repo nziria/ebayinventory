@@ -1,5 +1,46 @@
 // eBay Inventory Manager - Mobile Frontend Logic with Onboarding & Timer Support
 
+// ==========================================
+// AUTHENTICATION & SECURITY SYSTEM
+// ==========================================
+const AUTH_STORAGE_KEY = 'ebay_inventory_auth_token';
+
+function getAuthToken() {
+  return localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY) || '';
+}
+
+function setAuthToken(token, remember = true) {
+  if (remember) {
+    localStorage.setItem(AUTH_STORAGE_KEY, token);
+  } else {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, token);
+  }
+}
+
+function clearAuthToken() {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+// Intercettore Fetch per includere x-auth-token e gestire 401
+const originalFetch = window.fetch;
+window.fetch = async function(url, options = {}) {
+  options.headers = options.headers || {};
+  const token = getAuthToken();
+  if (token) {
+    if (options.headers instanceof Headers) {
+      options.headers.set('x-auth-token', token);
+    } else {
+      options.headers['x-auth-token'] = token;
+    }
+  }
+  const res = await originalFetch(url, options);
+  if (res.status === 401 && typeof url === 'string' && !url.includes('/api/auth/login') && !url.includes('/api/auth/verify')) {
+    showLockScreen();
+  }
+  return res;
+};
+
 const state = {
   items: [],
   filteredItems: [],
@@ -1505,14 +1546,133 @@ async function loadVaultHistory() {
   }
 }
 
+// ==========================================
+// LOCK SCREEN & LOGIN HANDLERS
+// ==========================================
+const authLockScreen = document.getElementById('authLockScreen');
+const formAuthLogin = document.getElementById('formAuthLogin');
+const authPasswordInput = document.getElementById('authPasswordInput');
+const authRememberMe = document.getElementById('authRememberMe');
+const authErrorMsg = document.getElementById('authErrorMsg');
+const btnLogout = document.getElementById('btnLogout');
+
+function showLockScreen() {
+  if (authLockScreen) {
+    authLockScreen.classList.remove('hidden');
+    if (authPasswordInput) {
+      authPasswordInput.value = '';
+      setTimeout(() => authPasswordInput.focus(), 100);
+    }
+  }
+}
+
+function hideLockScreen() {
+  if (authLockScreen) {
+    authLockScreen.classList.add('hidden');
+  }
+}
+
+async function checkAuthOnBoot() {
+  const token = getAuthToken();
+  if (!token) {
+    showLockScreen();
+    return false;
+  }
+  try {
+    const res = await originalFetch('/api/auth/verify', {
+      headers: { 'x-auth-token': token }
+    });
+    const data = await res.json();
+    if (data.authenticated) {
+      hideLockScreen();
+      return true;
+    } else {
+      clearAuthToken();
+      showLockScreen();
+      return false;
+    }
+  } catch (e) {
+    showLockScreen();
+    return false;
+  }
+}
+
+if (formAuthLogin) {
+  formAuthLogin.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = authPasswordInput.value;
+    const remember = authRememberMe ? authRememberMe.checked : true;
+    if (authErrorMsg) authErrorMsg.classList.add('hidden');
+
+    const btn = document.getElementById('btnSubmitLogin');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Verifica in corso...';
+    }
+
+    try {
+      const res = await originalFetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Password errata');
+      }
+
+      setAuthToken(data.token, remember);
+      hideLockScreen();
+      showToast('🔓 Accesso autorizzato!', 'success');
+      await checkStatus();
+      await loadVaultSummary();
+      await loadListings();
+    } catch (err) {
+      if (authErrorMsg) {
+        authErrorMsg.textContent = err.message;
+        authErrorMsg.classList.remove('hidden');
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🔓 Sblocca Gestionale';
+      }
+    }
+  });
+}
+
+if (btnLogout) {
+  btnLogout.addEventListener('click', async () => {
+    if (confirm('Vuoi bloccare la sessione e disconnetterti?')) {
+      const token = getAuthToken();
+      try {
+        await originalFetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'x-auth-token': token }
+        });
+      } catch (e) {}
+      clearAuthToken();
+      showLockScreen();
+      showToast('🔒 Sessione bloccata', 'info');
+    }
+  });
+}
+
 // Initial Boot
 async function initApp() {
-  await checkStatus();
-  await loadVaultSummary();
-  await loadListings();
+  const isAuth = await checkAuthOnBoot();
+  if (isAuth) {
+    await checkStatus();
+    await loadVaultSummary();
+    await loadListings();
+  }
 }
 initApp();
 
-// Auto refresh status every 20s
-setInterval(checkStatus, 20000);
+// Auto refresh status every 20s (solo se autenticato)
+setInterval(() => {
+  if (getAuthToken() && (!authLockScreen || authLockScreen.classList.contains('hidden'))) {
+    checkStatus();
+  }
+}, 20000);
 
