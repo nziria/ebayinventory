@@ -41,7 +41,28 @@ class AutoRestockMonitor {
       let deliveredCount = 0;
 
       for (const order of orders) {
+        // 1. Se non è pagato, ignora
         if (!order.isPaid) continue;
+
+        // 2. Se l'ordine è già stato SPEDITO su eBay in precedenza, NON inviare assolutamente alcuna chiave!
+        if (order.isShipped) {
+          for (const lineItem of order.lineItems) {
+            const orderKey = `${order.orderId}_${lineItem.transactionId || lineItem.itemId}`;
+            if (!keysManager.isOrderProcessed(orderKey)) {
+              keysManager.markOrderProcessed(orderKey, {
+                orderId: order.orderId,
+                transactionId: lineItem.transactionId,
+                buyerId: order.buyerUserId,
+                itemId: lineItem.itemId,
+                title: lineItem.title,
+                skipped: true,
+                reason: 'Ordine già evaso/spedito su eBay in precedenza',
+                processedAt: new Date().toISOString()
+              });
+            }
+          }
+          continue;
+        }
 
         for (const lineItem of order.lineItems) {
           const orderKey = `${order.orderId}_${lineItem.transactionId || lineItem.itemId}`;
@@ -54,6 +75,23 @@ class AutoRestockMonitor {
           const effectiveKey = keysManager.isDigitalDeliveryEnabled(targetKey) ? targetKey : String(lineItem.itemId);
 
           if (!isEnabled) continue;
+
+          // Se l'ordine è più vecchio di 2 ore, consideralo vecchio e non inviare chiavi
+          const orderTime = new Date(order.paidTime || order.createdTime || 0).getTime();
+          const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+          if (orderTime && orderTime < twoHoursAgo) {
+            keysManager.markOrderProcessed(orderKey, {
+              orderId: order.orderId,
+              transactionId: lineItem.transactionId,
+              buyerId: order.buyerUserId,
+              itemId: lineItem.itemId,
+              title: lineItem.title,
+              skipped: true,
+              reason: 'Ordine antecedente',
+              processedAt: new Date().toISOString()
+            });
+            continue;
+          }
 
           const itemVault = keysManager.getOrCreateItemVault(effectiveKey, lineItem.title, lineItem.sku);
           const availableCount = keysManager.getAvailableKeysCount(effectiveKey);
