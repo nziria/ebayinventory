@@ -119,9 +119,14 @@ class AutoRestockMonitor {
               );
 
               let shippedOk = false;
+              let trackingUsed = null;
               if (itemVault.autoShip !== false) {
                 try {
-                  await ebayApi.markOrderAsShipped(order.orderId, lineItem.transactionId, lineItem.itemId);
+                  trackingUsed = keysManager.getNextTrackingNumber();
+                  await ebayApi.markOrderAsShipped(order.orderId, lineItem.transactionId, lineItem.itemId, {
+                    carrier: trackingUsed.carrier || 'UPS',
+                    trackingNumber: trackingUsed.trackingNumber
+                  });
                   shippedOk = true;
                 } catch (shipErr) {
                   console.error(`Errore markOrderAsShipped per ordine ${order.orderId}:`, shipErr.message);
@@ -136,6 +141,8 @@ class AutoRestockMonitor {
                 title: fullTitle,
                 varName: lineItem.varName,
                 keyUsed: keyConsumed.code,
+                trackingNumber: trackingUsed ? trackingUsed.trackingNumber : null,
+                carrier: trackingUsed ? trackingUsed.carrier : 'UPS',
                 messageSent: msgResult.success,
                 markedShipped: shippedOk,
                 deliveredAt: new Date().toISOString()

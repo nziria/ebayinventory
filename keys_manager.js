@@ -110,6 +110,7 @@ class KeysManager {
   getAllVaultSummary() {
     const summary = {};
     for (const [key, item] of Object.entries(this.vault)) {
+      if (key.startsWith('_')) continue;
       const keys = item.keys || [];
       const available = keys.filter(k => k.status === 'available');
       const delivered = keys.filter(k => k.status === 'delivered');
@@ -135,6 +136,40 @@ class KeysManager {
       };
     }
     return summary;
+  }
+
+  /**
+   * Genera il prossimo codice di spedizione progressivo (es. PLEASEREADEBAYMESSAGE76)
+   */
+  getNextTrackingNumber() {
+    if (!this.vault._meta) {
+      this.vault._meta = {
+        carrier: 'UPS',
+        trackingPrefix: 'PLEASEREADEBAYMESSAGE',
+        lastCounter: 75
+      };
+    }
+    this.vault._meta.lastCounter = (parseInt(this.vault._meta.lastCounter, 10) || 75) + 1;
+    this.saveVault();
+
+    const carrier = this.vault._meta.carrier || 'UPS';
+    const trackingNumber = `${this.vault._meta.trackingPrefix || 'PLEASEREADEBAYMESSAGE'}${this.vault._meta.lastCounter}`;
+    return {
+      carrier,
+      trackingNumber,
+      counter: this.vault._meta.lastCounter
+    };
+  }
+
+  getTrackingConfig() {
+    if (!this.vault._meta) {
+      this.vault._meta = {
+        carrier: 'UPS',
+        trackingPrefix: 'PLEASEREADEBAYMESSAGE',
+        lastCounter: 75
+      };
+    }
+    return this.vault._meta;
   }
 
   /**

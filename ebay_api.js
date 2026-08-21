@@ -691,7 +691,7 @@ async function sendBuyerMessage(itemId, recipientId, subject, body) {
  * @param {string} [transactionId] - Transaction ID facoltativo
  * @param {string} [itemId] - ItemID facoltativo
  */
-async function markOrderAsShipped(orderId, transactionId = null, itemId = null) {
+async function markOrderAsShipped(orderId, transactionId = null, itemId = null, trackingInfo = null) {
   if (!orderId && (!transactionId || !itemId)) {
     throw new Error('Specificare OrderID o la coppia TransactionID + ItemID');
   }
@@ -703,10 +703,22 @@ async function markOrderAsShipped(orderId, transactionId = null, itemId = null) 
     orderIdentifierXml = `<ItemID>${itemId}</ItemID><TransactionID>${transactionId}</TransactionID>`;
   }
 
+  let shipmentXml = '';
+  if (trackingInfo && trackingInfo.trackingNumber) {
+    const carrier = trackingInfo.carrier || 'UPS';
+    shipmentXml = `
+  <Shipment>
+    <ShipmentTrackingDetails>
+      <ShippingCarrierUsed>${escapeXml(carrier)}</ShippingCarrierUsed>
+      <ShipmentTrackingNumber>${escapeXml(trackingInfo.trackingNumber)}</ShipmentTrackingNumber>
+    </ShipmentTrackingDetails>
+  </Shipment>`;
+  }
+
   const requestXml = `<?xml version="1.0" encoding="utf-8"?>
 <CompleteSaleRequest xmlns="urn:ebay:apis:eBLBaseComponents">
   ${orderIdentifierXml}
-  <Shipped>true</Shipped>
+  <Shipped>true</Shipped>${shipmentXml}
 </CompleteSaleRequest>`;
 
   const result = await callTradingApi('CompleteSale', requestXml);

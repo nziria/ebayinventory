@@ -1587,7 +1587,8 @@ async function loadVaultHistory() {
               if (h.skipped) {
                 statusHtml = `<span style="color: var(--text-muted); font-size: 0.75rem;">⏭️ ${escapeHtml(h.reason || 'Archiviato')}</span>`;
               } else if (h.messageSent) {
-                statusHtml = `<span style="color: #4ade80; font-weight: 700;">✅ Inviata</span> ${h.markedShipped ? '<span style="color: #38bdf8; font-weight: 600;">📦 Spedito</span>' : ''}`;
+                const trackingText = h.trackingNumber ? `<br><span style="font-size: 0.72rem; color: #a5f3fc; font-family: monospace;">🚚 ${escapeHtml(h.carrier || 'UPS')}: <strong>${escapeHtml(h.trackingNumber)}</strong></span>` : '';
+                statusHtml = `<span style="color: #4ade80; font-weight: 700;">✅ Inviata</span> ${h.markedShipped ? '<span style="color: #38bdf8; font-weight: 600;">📦 Spedito</span>' : ''}${trackingText}`;
               } else {
                 statusHtml = `<span style="color: #f87171; font-weight: 600;">⚠️ Invio fallito</span>`;
               }
