@@ -1444,39 +1444,94 @@ window.deleteVaultKey = async function(targetKey, keyId) {
   }
 };
 
-// Save Settings and Template
+// Funzione condivisa per salvare le impostazioni del Vault
+async function saveCurrentVaultSettings(silent = false) {
+  const targetKey = selectVaultTarget.value;
+  if (!targetKey) return;
+  const enabled = toggleVaultEnabled.checked;
+  const autoShip = toggleVaultAutoShip.checked;
+  const template = textareaMessageTemplate.value.trim();
+
+  const selectedOpt = selectVaultTarget.options[selectVaultTarget.selectedIndex];
+  const title = selectedOpt ? selectedOpt.dataset.title : '';
+  const sku = selectedOpt ? selectedOpt.dataset.sku : '';
+
+  try {
+    const res = await fetch('/api/vault/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetKey, enabled, autoShip, template, title, sku })
+    });
+
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Errore salvataggio');
+
+    state.vault = data.vault;
+    updateVaultHeaderBadge();
+    applyFilterAndRender();
+    if (!silent) {
+      showToast(`✅ Consegna Automatica: ${enabled ? 'ATTIVA 🚀' : 'DISATTIVATA ⏸️'}`, 'success');
+    }
+  } catch (err) {
+    showToast(`❌ ${err.message}`, 'error');
+  }
+}
+
+// Auto-salva immediatamente appena l'utente tocca lo switch
+if (toggleVaultEnabled) {
+  toggleVaultEnabled.addEventListener('change', () => {
+    saveCurrentVaultSettings(false);
+  });
+}
+if (toggleVaultAutoShip) {
+  toggleVaultAutoShip.addEventListener('change', () => {
+    saveCurrentVaultSettings(false);
+  });
+}
+
+// Pulsante Salva Stato dedicato nel banner
+const btnSaveVaultToggles = document.getElementById('btnSaveVaultToggles');
+if (btnSaveVaultToggles) {
+  btnSaveVaultToggles.addEventListener('click', () => {
+    saveCurrentVaultSettings(false);
+  });
+}
+
+// Pulsante Evadi Ordini Ora nel banner
+const btnRunVaultOrdersNow = document.getElementById('btnRunVaultOrdersNow');
+if (btnRunVaultOrdersNow) {
+  btnRunVaultOrdersNow.addEventListener('click', async () => {
+    btnRunVaultOrdersNow.disabled = true;
+    btnRunVaultOrdersNow.textContent = '⏳ Invio...';
+    try {
+      const res = await fetch('/api/vault/check-orders', { method: 'POST' });
+      const data = await res.json();
+      if (data.deliveredCount > 0) {
+        showToast(`🎉 Consegnate con successo ${data.deliveredCount} licenze!`, 'success');
+      } else {
+        showToast('Nessun nuovo ordine da evadere.', 'info');
+      }
+      await loadVaultSummary();
+      await loadVaultHistory();
+      await loadListings();
+    } catch (e) {
+      showToast(`❌ ${e.message}`, 'error');
+    } finally {
+      btnRunVaultOrdersNow.disabled = false;
+      btnRunVaultOrdersNow.textContent = '⚡ Evadi Ordini Ora';
+    }
+  });
+}
+
+// Save Settings and Template (Tab 2)
 if (formSaveVaultSettings) {
   formSaveVaultSettings.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const targetKey = selectVaultTarget.value;
-    const enabled = toggleVaultEnabled.checked;
-    const autoShip = toggleVaultAutoShip.checked;
-    const template = textareaMessageTemplate.value.trim();
-
-    const selectedOpt = selectVaultTarget.options[selectVaultTarget.selectedIndex];
-    const title = selectedOpt ? selectedOpt.dataset.title : '';
-    const sku = selectedOpt ? selectedOpt.dataset.sku : '';
-
     btnSaveVaultSettings.disabled = true;
     btnSaveVaultSettings.textContent = '⏳ Salvataggio...';
-
     try {
-      const res = await fetch('/api/vault/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetKey, enabled, autoShip, template, title, sku })
-      });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Errore');
-
-      showToast('✅ Impostazioni Key Vault salvate con successo!', 'success');
-      state.vault = data.vault;
-      updateVaultHeaderBadge();
-      onVaultTargetChange();
-      applyFilterAndRender();
-    } catch (err) {
-      showToast(`❌ ${err.message}`, 'error');
+      await saveCurrentVaultSettings(false);
+      showToast('✅ Template & Impostazioni salvati con successo!', 'success');
     } finally {
       btnSaveVaultSettings.disabled = false;
       btnSaveVaultSettings.textContent = '💾 Salva Template & Impostazioni';
@@ -1499,12 +1554,12 @@ if (btnCheckOrdersNow) {
       }
       await loadVaultSummary();
       await loadVaultHistory();
-      onVaultTargetChange();
+      await loadListings();
     } catch (err) {
       showToast(`❌ ${err.message}`, 'error');
     } finally {
       btnCheckOrdersNow.disabled = false;
-      btnCheckOrdersNow.textContent = '🔄 Controlla Ordini Ora';
+      btnCheckOrdersNow.textContent = '⚡ Controlla ed Evadi Ordini Adesso';
     }
   });
 }

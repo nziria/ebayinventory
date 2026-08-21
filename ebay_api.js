@@ -577,7 +577,7 @@ async function getRecentOrders(numberOfDays = 2) {
     const orderStatus = order.OrderStatus;
     const paidTime = order.PaidTime || order.CheckoutStatus?.LastModifiedTime;
     const isPaid = Boolean(order.PaidTime || order.AmountPaid?._ > 0 || order.CheckoutStatus?.Status === 'Complete');
-    const isShipped = Boolean(order.ShippedTime || order.ShippingDetails?.SellingManagerSalesRecordNumber);
+    const isShipped = Boolean(order.ShippedTime);
 
     let rawTransactions = order.TransactionArray ? order.TransactionArray.Transaction : [];
     if (!rawTransactions) rawTransactions = [];
