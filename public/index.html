@@ -478,6 +478,15 @@
           <!-- TAB 1: Carica Chiavi -->
           <div id="vaultTabKeys" class="vault-tab-content">
             <form id="formAddKeys" style="margin-top: 10px;">
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label for="inputSupplierOrderId" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
+                  <span>🛒 Numero / ID Ordine Fornitore (Opzionale):</span>
+                  <span style="font-size: 0.72rem; color: #38bdf8;">per garanzia/ticket</span>
+                </label>
+                <input type="text" id="inputSupplierOrderId" placeholder="Es. 45678, ROYAL-9982, Kinguin..." style="font-size: 0.85rem; font-family: monospace;">
+                <span class="field-help" style="font-size: 0.72rem; color: var(--text-muted);">Tutte le chiavi caricate sotto verranno collegate a questo acquisto.</span>
+              </div>
+
               <label for="textareaNewKeys" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">
                 Incolla qui le nuove chiavi (una per riga):
               </label>
@@ -518,9 +527,12 @@
 
           <!-- TAB 3: Storico Consegne -->
           <div id="vaultTabHistory" class="vault-tab-content hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 8px;">
               <span style="font-size: 0.85rem; color: var(--text-muted);">Registro licenze inviate automaticamente:</span>
               <button type="button" class="btn-secondary" id="btnCheckOrdersNow" style="font-size: 0.75rem; padding: 4px 8px;">🔄 Controlla Ordini Ora</button>
+            </div>
+            <div style="margin-bottom: 10px;">
+              <input type="text" id="inputSearchVaultHistory" placeholder="🔍 Cerca per acquirente, chiave o ordine fornitore..." style="font-size: 0.8rem; width: 100%; padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.6); color: var(--text-main);">
             </div>
             <div id="vaultHistoryContainer" class="history-table-wrapper">
               <p style="color: var(--text-muted); font-size: 0.8rem; text-align: center;">Nessun ordine evaso ancora.</p>

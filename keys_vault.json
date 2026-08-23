@@ -24,5 +24,10 @@
       }
     ],
     "updatedAt": "2026-08-21T19:07:00.000Z"
+  },
+  "_meta": {
+    "carrier": "UPS",
+    "trackingPrefix": "PLEASEREADEBAYMESSAGE",
+    "lastCounter": 75
   }
 }

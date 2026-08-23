@@ -141,6 +141,7 @@ class AutoRestockMonitor {
                 title: fullTitle,
                 varName: lineItem.varName,
                 keyUsed: keyConsumed.code,
+                supplierOrderId: keyConsumed.supplierOrderId || '',
                 trackingNumber: trackingUsed ? trackingUsed.trackingNumber : null,
                 carrier: trackingUsed ? trackingUsed.carrier : 'UPS',
                 messageSent: msgResult.success,

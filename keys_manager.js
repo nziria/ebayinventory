@@ -125,10 +125,16 @@ class KeysManager {
         totalKeys: keys.length,
         availableCount: available.length,
         deliveredCount: delivered.length,
-        availableKeys: available.map(k => ({ id: k.id, code: k.code, addedAt: k.addedAt })),
+        availableKeys: available.map(k => ({
+          id: k.id,
+          code: k.code,
+          supplierOrderId: k.supplierOrderId || '',
+          addedAt: k.addedAt
+        })),
         deliveredKeys: delivered.map(k => ({
           id: k.id,
           code: k.code,
+          supplierOrderId: k.supplierOrderId || '',
           deliveredAt: k.deliveredAt,
           orderId: k.orderId,
           buyerId: k.buyerId
@@ -173,15 +179,29 @@ class KeysManager {
   }
 
   /**
-   * Aggiunge chiavi in blocco a un prodotto/variante
+   * Aggiunge chiavi in blocco a un prodotto/variante con associazione all'ordine fornitore
    */
-  addKeys(targetKey, keysArray, title = '', sku = '') {
+  addKeys(targetKey, keysArray, title = '', sku = '', batchSupplierOrderId = '') {
     const itemVault = this.getOrCreateItemVault(targetKey, title, sku);
     const added = [];
     const now = new Date().toISOString();
 
-    for (const rawCode of keysArray) {
-      const code = String(rawCode).trim();
+    for (const rawLine of keysArray) {
+      let lineStr = String(rawLine).trim();
+      if (!lineStr) continue;
+
+      let code = lineStr;
+      let lineSupplierOrderId = String(batchSupplierOrderId || '').trim();
+
+      // Supporta formato separato da virgola, punto e virgola, tab o pipe: "KEY, 45678" oppure "KEY | 45678"
+      if (/[,;\t|]/.test(lineStr)) {
+        const parts = lineStr.split(/[,;\t|]+/).map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          code = parts[0];
+          lineSupplierOrderId = parts[1];
+        }
+      }
+
       if (!code) continue;
 
       // Evita duplicati identici tra le chiavi ancora disponibili
@@ -190,6 +210,7 @@ class KeysManager {
         const keyObj = {
           id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
           code,
+          supplierOrderId: lineSupplierOrderId,
           status: 'available',
           addedAt: now
         };

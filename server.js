@@ -713,7 +713,7 @@ app.get('/api/vault/summary', (req, res) => {
  */
 app.post('/api/vault/keys/add', (req, res) => {
   try {
-    const { targetKey, keys, title, sku } = req.body;
+    const { targetKey, keys, title, sku, supplierOrderId } = req.body;
     if (!targetKey) {
       return res.status(400).json({ success: false, error: 'targetKey obbligatorio' });
     }
@@ -729,8 +729,9 @@ app.post('/api/vault/keys/add', (req, res) => {
       return res.status(400).json({ success: false, error: 'Nessuna chiave valida inserita' });
     }
 
-    const result = keysManager.addKeys(targetKey, keysArray, title, sku);
-    monitor.addLog('INFO', `Aggiunte ${result.addedCount} chiavi nel Vault per "${title || targetKey}" (Totale disp: ${result.totalAvailable}).`);
+    const result = keysManager.addKeys(targetKey, keysArray, title, sku, supplierOrderId);
+    const supplierInfoText = supplierOrderId ? ` [Ordine Fornitore: #${supplierOrderId}]` : '';
+    monitor.addLog('INFO', `Aggiunte ${result.addedCount} chiavi nel Vault per "${title || targetKey}"${supplierInfoText} (Totale disp: ${result.totalAvailable}).`);
 
     res.json({
       success: true,

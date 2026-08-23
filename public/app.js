@@ -1360,6 +1360,7 @@ function onVaultTargetChange() {
     availableKeysList.innerHTML = itemVault.availableKeys.map(k => `
       <span class="key-pill">
         <span>${escapeHtml(k.code)}</span>
+        ${k.supplierOrderId ? `<small style="color: #38bdf8; font-size: 0.72rem; margin-left: 4px; background: rgba(56, 189, 248, 0.15); padding: 1px 5px; border-radius: 4px; font-weight: 600;" title="Ordine Fornitore">#${escapeHtml(k.supplierOrderId)}</small>` : ''}
         <button type="button" class="btn-delete-key" onclick="deleteVaultKey('${selectedKey}', '${k.id}')" title="Elimina chiave">&times;</button>
       </span>
     `).join('');
@@ -1386,6 +1387,9 @@ if (formAddKeys) {
     e.preventDefault();
     const targetKey = selectVaultTarget.value;
     const rawKeys = textareaNewKeys.value.trim();
+    const inputSupplierOrderId = document.getElementById('inputSupplierOrderId');
+    const supplierOrderId = inputSupplierOrderId ? inputSupplierOrderId.value.trim() : '';
+
     if (!targetKey || !rawKeys) {
       showToast('Inserisci almeno una chiave valida', 'error');
       return;
@@ -1402,7 +1406,7 @@ if (formAddKeys) {
       const res = await fetch('/api/vault/keys/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetKey, keys: rawKeys, title, sku })
+        body: JSON.stringify({ targetKey, keys: rawKeys, title, sku, supplierOrderId })
       });
 
       const data = await res.json();
@@ -1410,6 +1414,7 @@ if (formAddKeys) {
 
       showToast(`✅ Aggiunte ${data.data.addedCount} chiavi nel Vault!`, 'success');
       textareaNewKeys.value = '';
+      if (inputSupplierOrderId) inputSupplierOrderId.value = '';
       state.vault = data.vault;
       updateVaultHeaderBadge();
       onVaultTargetChange();
@@ -1564,69 +1569,150 @@ if (btnCheckOrdersNow) {
   });
 }
 
+let currentVaultHistoryData = [];
+
+window.copyTicketData = function(orderId, buyerId, key, supplierOrderId, date, title) {
+  const formattedDate = new Date(date).toLocaleDateString('it-IT');
+  const text = `Order Number: ${supplierOrderId || 'N/D'}
+Defective Product Key: ${key}
+Product: ${title || 'Software License'}
+eBay Buyer: ${buyerId || 'N/D'} (Order #${orderId || 'N/D'})
+Date: ${formattedDate}
+Issue: Key activation failed / invalid license request for replacement or refund.`;
+
+  navigator.clipboard.writeText(text);
+  showToast('🎫 Dati per ticket fornitore copiati negli appunti!', 'success');
+};
+
+function renderVaultHistoryTable(historyList) {
+  if (!vaultHistoryContainer) return;
+  if (!historyList || historyList.length === 0) {
+    vaultHistoryContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">Nessun ordine trovato.</p>';
+    return;
+  }
+
+  vaultHistoryContainer.innerHTML = `
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Acquirente / Ordine</th>
+          <th>Articolo</th>
+          <th>Chiave Consegnata</th>
+          <th>Ordine Fornitore</th>
+          <th>Stato Consegna</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${historyList.map(h => {
+          let statusHtml = '';
+          if (h.skipped) {
+            statusHtml = `<span style="color: var(--text-muted); font-size: 0.75rem;">⏭️ ${escapeHtml(h.reason || 'Archiviato')}</span>`;
+          } else if (h.messageSent) {
+            const trackingText = h.trackingNumber ? `<br><span style="font-size: 0.72rem; color: #a5f3fc; font-family: monospace;">🚚 ${escapeHtml(h.carrier || 'UPS')}: <strong>${escapeHtml(h.trackingNumber)}</strong></span>` : '';
+            statusHtml = `<span style="color: #4ade80; font-weight: 700;">✅ Inviata</span> ${h.markedShipped ? '<span style="color: #38bdf8; font-weight: 600;">📦 Spedito</span>' : ''}${trackingText}`;
+          } else {
+            statusHtml = `<span style="color: #f87171; font-weight: 600;">⚠️ Invio fallito</span>`;
+          }
+
+          let keyHtml = '<span style="color: var(--text-muted); font-size: 0.75rem;">-</span>';
+          if (h.keyUsed) {
+            keyHtml = `
+              <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 3px 8px; border-radius: 6px;">
+                <code style="color: #38bdf8; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.5px;">${escapeHtml(h.keyUsed)}</code>
+                <button type="button" style="background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0;" title="Copia Chiave" onclick="navigator.clipboard.writeText('${escapeHtml(h.keyUsed)}'); showToast('📋 Chiave copiata negli appunti!', 'info');">📋</button>
+              </div>
+            `;
+          }
+
+          let supplierHtml = '<span style="color: var(--text-muted); font-size: 0.75rem;">-</span>';
+          if (h.supplierOrderId) {
+            supplierHtml = `
+              <div style="display: inline-flex; align-items: center; gap: 4px;">
+                <span style="background: rgba(139, 92, 246, 0.18); border: 1px solid rgba(139, 92, 246, 0.4); color: #c4b5fd; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.78rem;" title="ID Ordine Fornitore">#${escapeHtml(h.supplierOrderId)}</span>
+                <button type="button" style="background: none; border: none; cursor: pointer; font-size: 0.75rem; padding: 0;" title="Copia Ordine Fornitore" onclick="navigator.clipboard.writeText('${escapeHtml(h.supplierOrderId)}'); showToast('📋 ID Fornitore copiato!', 'info');">📋</button>
+              </div>
+            `;
+          }
+
+          let actionsHtml = '';
+          if (h.keyUsed) {
+            actionsHtml = `
+              <div style="margin-top: 4px;">
+                <button type="button" class="btn-secondary" style="font-size: 0.68rem; padding: 2px 6px; display: inline-flex; align-items: center; gap: 3px;" title="Copia dati formattati per aprire ticket al fornitore" onclick="copyTicketData('${escapeHtml(h.orderId || '')}', '${escapeHtml(h.buyerId || '')}', '${escapeHtml(h.keyUsed)}', '${escapeHtml(h.supplierOrderId || '')}', '${h.deliveredAt || h.processedAt}', '${escapeHtml(h.title || '')}')">
+                  🎫 Copia Ticket
+                </button>
+              </div>
+            `;
+          }
+
+          return `
+            <tr>
+              <td style="white-space: nowrap; font-size: 0.75rem; color: var(--text-muted);">${new Date(h.deliveredAt || h.processedAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</td>
+              <td>
+                <strong>${escapeHtml(h.buyerId || 'Acquirente')}</strong><br>
+                <span style="font-size:0.72rem; color:var(--text-muted);">#${escapeHtml(h.orderId)}</span>
+              </td>
+              <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(h.title)}">
+                ${escapeHtml(h.title)}
+              </td>
+              <td>
+                ${keyHtml}
+                ${actionsHtml}
+              </td>
+              <td>${supplierHtml}</td>
+              <td>${statusHtml}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 async function loadVaultHistory() {
   if (!vaultHistoryContainer) return;
   try {
     const res = await fetch('/api/vault/history');
     const data = await res.json();
-    if (data.history && data.history.length > 0) {
-      vaultHistoryContainer.innerHTML = `
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Acquirente / Ordine</th>
-              <th>Articolo</th>
-              <th>Chiave Licenza Inviata</th>
-              <th>Stato Consegna</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.history.map(h => {
-              let statusHtml = '';
-              if (h.skipped) {
-                statusHtml = `<span style="color: var(--text-muted); font-size: 0.75rem;">⏭️ ${escapeHtml(h.reason || 'Archiviato')}</span>`;
-              } else if (h.messageSent) {
-                const trackingText = h.trackingNumber ? `<br><span style="font-size: 0.72rem; color: #a5f3fc; font-family: monospace;">🚚 ${escapeHtml(h.carrier || 'UPS')}: <strong>${escapeHtml(h.trackingNumber)}</strong></span>` : '';
-                statusHtml = `<span style="color: #4ade80; font-weight: 700;">✅ Inviata</span> ${h.markedShipped ? '<span style="color: #38bdf8; font-weight: 600;">📦 Spedito</span>' : ''}${trackingText}`;
-              } else {
-                statusHtml = `<span style="color: #f87171; font-weight: 600;">⚠️ Invio fallito</span>`;
-              }
+    currentVaultHistoryData = data.history || [];
+    const searchInput = document.getElementById('inputSearchVaultHistory');
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-              let keyHtml = '<span style="color: var(--text-muted); font-size: 0.75rem;">-</span>';
-              if (h.keyUsed) {
-                keyHtml = `
-                  <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 3px 8px; border-radius: 6px;">
-                    <code style="color: #38bdf8; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.5px;">${escapeHtml(h.keyUsed)}</code>
-                    <button type="button" style="background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0;" title="Copia Chiave" onclick="navigator.clipboard.writeText('${escapeHtml(h.keyUsed)}'); showToast('📋 Chiave copiata negli appunti!', 'info');">📋</button>
-                  </div>
-                `;
-              }
-
-              return `
-                <tr>
-                  <td style="white-space: nowrap; font-size: 0.75rem; color: var(--text-muted);">${new Date(h.deliveredAt || h.processedAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                  <td>
-                    <strong>${escapeHtml(h.buyerId || 'Acquirente')}</strong><br>
-                    <span style="font-size:0.72rem; color:var(--text-muted);">#${escapeHtml(h.orderId)}</span>
-                  </td>
-                  <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(h.title)}">
-                    ${escapeHtml(h.title)}
-                  </td>
-                  <td>${keyHtml}</td>
-                  <td>${statusHtml}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      `;
+    if (query) {
+      const filtered = currentVaultHistoryData.filter(h => 
+        (h.buyerId && h.buyerId.toLowerCase().includes(query)) ||
+        (h.orderId && h.orderId.toLowerCase().includes(query)) ||
+        (h.keyUsed && h.keyUsed.toLowerCase().includes(query)) ||
+        (h.supplierOrderId && h.supplierOrderId.toLowerCase().includes(query)) ||
+        (h.title && h.title.toLowerCase().includes(query))
+      );
+      renderVaultHistoryTable(filtered);
     } else {
-      vaultHistoryContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px;">Nessun ordine evaso ancora.</p>';
+      renderVaultHistoryTable(currentVaultHistoryData);
     }
   } catch (e) {
     vaultHistoryContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.8rem; text-align: center;">Errore caricamento storico.</p>';
   }
+}
+
+const inputSearchVaultHistory = document.getElementById('inputSearchVaultHistory');
+if (inputSearchVaultHistory) {
+  inputSearchVaultHistory.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    if (!query) {
+      renderVaultHistoryTable(currentVaultHistoryData);
+      return;
+    }
+    const filtered = currentVaultHistoryData.filter(h => 
+      (h.buyerId && h.buyerId.toLowerCase().includes(query)) ||
+      (h.orderId && h.orderId.toLowerCase().includes(query)) ||
+      (h.keyUsed && h.keyUsed.toLowerCase().includes(query)) ||
+      (h.supplierOrderId && h.supplierOrderId.toLowerCase().includes(query)) ||
+      (h.title && h.title.toLowerCase().includes(query))
+    );
+    renderVaultHistoryTable(filtered);
+  });
 }
 
 // ==========================================
