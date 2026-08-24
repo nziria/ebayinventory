@@ -832,6 +832,71 @@ app.post('/api/vault/check-orders', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/system/update
+ * Esegue il pull del codice da GitHub e ricarica l'applicazione Passenger
+ */
+app.post('/api/system/update', requireAuth, (req, res) => {
+  const { exec } = require('child_process');
+  try {
+    monitor.addLog('INFO', '🔄 Avviato aggiornamento del codice da GitHub...');
+
+    // Salva un backup di sicurezza dei file di dati prima del pull
+    const backupDir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    const dataFiles = ['keys_vault.json', 'processed_orders.json', 'restock_rules.json', '.env'];
+    for (const f of dataFiles) {
+      const src = path.join(__dirname, f);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(backupDir, `${f}.bak`));
+      }
+    }
+
+    // Comando git pull sicuro
+    const gitCmd = `git config --global --add safe.directory "${__dirname.replace(/\\/g, '/')}" && git pull origin main`;
+
+    exec(gitCmd, { cwd: __dirname }, (error, stdout, stderr) => {
+      // Ripristina i dati se necessario
+      for (const f of dataFiles) {
+        const bak = path.join(backupDir, `${f}.bak`);
+        const target = path.join(__dirname, f);
+        if (fs.existsSync(bak) && !fs.existsSync(target)) {
+          fs.copyFileSync(bak, target);
+        }
+      }
+
+      // Segnala a Phusion Passenger su cPanel di riavviare l'app
+      try {
+        const tmpDir = path.join(__dirname, 'tmp');
+        if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+        fs.writeFileSync(path.join(tmpDir, 'restart.txt'), String(Date.now()));
+      } catch (restartErr) {
+        console.error('Errore creazione restart.txt:', restartErr.message);
+      }
+
+      if (error) {
+        console.error('Errore git pull:', error.message, stderr);
+        monitor.addLog('WARN', `Aggiornamento git: ${error.message || stderr}`);
+        return res.json({
+          success: false,
+          error: `Errore durante il download da GitHub: ${stderr || error.message}`,
+          output: stdout
+        });
+      }
+
+      monitor.addLog('SUCCESS', '✅ Codice aggiornato con successo da GitHub! Riavvio completato.');
+      res.json({
+        success: true,
+        message: 'Aggiornamento completato con successo da GitHub! Il server si è riavviato.',
+        output: stdout
+      });
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Fallback SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

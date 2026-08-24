@@ -7,6 +7,11 @@ node_modules/
 *.txt
 "ebay developers.txt"
 
+# Database e dati reali del negozio (NON toccare durante aggiornamenti di codice)
+keys_vault.json
+processed_orders.json
+restock_rules.json
+
 # Log locali
 *.log
 

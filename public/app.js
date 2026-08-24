@@ -1215,6 +1215,46 @@ logsDrawer.addEventListener('click', (e) => {
   if (e.target === logsDrawer) logsDrawer.classList.add('hidden');
 });
 
+// System Update da GitHub
+const btnSystemUpdate = document.getElementById('btnSystemUpdate');
+const updateStatusText = document.getElementById('updateStatusText');
+
+if (btnSystemUpdate) {
+  btnSystemUpdate.addEventListener('click', async () => {
+    if (!confirm('Vuoi scaricare gli ultimi aggiornamenti da GitHub e riavviare il server? Le tue chiavi e i dati non verranno toccati.')) return;
+
+    btnSystemUpdate.disabled = true;
+    btnSystemUpdate.textContent = '⏳ Download in corso...';
+    if (updateStatusText) {
+      updateStatusText.classList.remove('hidden');
+      updateStatusText.textContent = 'Scaricamento file da GitHub e riavvio server in corso...';
+    }
+
+    try {
+      const res = await fetch(getApiUrl('/api/system/update'), { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Errore durante l\'aggiornamento');
+      }
+
+      showToast('✅ Aggiornamento completato! Ricarica pagina...', 'success');
+      if (updateStatusText) {
+        updateStatusText.textContent = '✅ ' + data.message;
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 2500);
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
+      if (updateStatusText) {
+        updateStatusText.textContent = `❌ ${err.message}`;
+      }
+      btnSystemUpdate.disabled = false;
+      btnSystemUpdate.textContent = '🔄 Aggiorna da GitHub';
+    }
+  });
+}
+
 // Utility: Escape HTML
 function escapeHtml(str) {
   if (!str) return '';
