@@ -823,11 +823,13 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const PORT = config.port;
-app.listen(PORT, '0.0.0.0', () => {
+const PORT = config.port || process.env.PORT || 3000;
+const listenArgs = (!isNaN(Number(PORT))) ? [Number(PORT), '0.0.0.0'] : [PORT];
+
+app.listen(...listenArgs, () => {
   console.log(`\n======================================================`);
   console.log(`🚀 Server Gestione Inventario eBay avviato con successo!`);
-  console.log(`📱 Accedi dal browser su: http://localhost:${PORT}`);
+  console.log(`📱 In ascolto su: ${PORT}`);
   console.log(`🌐 Ambiente: ${config.envName} (Sito ID: ${config.siteId})`);
   console.log(`======================================================\n`);
 
