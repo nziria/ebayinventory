@@ -254,6 +254,17 @@ async function loadConfig() {
     cfgSiteId.value = data.siteId || '101';
     cfgInterval.value = data.autoRestockInterval || 15;
     cfgPort.value = data.port || 3000;
+
+    const cfgDefaultRestockDelay = document.getElementById('cfgDefaultRestockDelay');
+    if (cfgDefaultRestockDelay) {
+      try {
+        const rulesRes = await fetch('/api/rules/all');
+        const rulesData = await rulesRes.json();
+        if (rulesData.global && rulesData.global.defaultDelayMinutes !== undefined) {
+          cfgDefaultRestockDelay.value = rulesData.global.defaultDelayMinutes;
+        }
+      } catch (e) {}
+    }
   } catch (err) {
     console.error('Errore caricamento configurazione:', err);
   }
@@ -437,9 +448,19 @@ formConfig.addEventListener('submit', async (e) => {
     });
     const data = await res.json();
 
-    if (!data.success) throw new Error(data.error || 'Errore durante il salvataggio');
+    const cfgDefaultRestockDelay = document.getElementById('cfgDefaultRestockDelay');
+    if (cfgDefaultRestockDelay) {
+      try {
+        const defaultDelayMinutes = parseInt(cfgDefaultRestockDelay.value, 10) || 0;
+        await fetch(getApiUrl('/api/rules/global'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ defaultDelayMinutes })
+        });
+      } catch (e) {}
+    }
 
-    showToast('🎉 Credenziali salvate nel file .env con successo!', 'success');
+    showToast('🎉 Credenziali e Timer salvati con successo!', 'success');
     configModal.classList.add('hidden');
     
     // Riavvia stato e carica inserzioni
