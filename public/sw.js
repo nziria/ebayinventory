@@ -1,10 +1,10 @@
-const CACHE_NAME = 'ebay-stock-v1';
+const CACHE_NAME = 'ebay-stock-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
