@@ -145,17 +145,33 @@ class KeysManager {
   }
 
   /**
-   * Genera il prossimo codice di spedizione progressivo (es. PLEASEREADEBAYMESSAGE76)
+   * Genera il prossimo codice di spedizione progressivo (es. PLEASEREADEBAYMESSAGE82)
    */
   getNextTrackingNumber() {
     if (!this.vault._meta) {
       this.vault._meta = {
         carrier: 'UPS',
         trackingPrefix: 'PLEASEREADEBAYMESSAGE',
-        lastCounter: 75
+        lastCounter: 81
       };
     }
-    this.vault._meta.lastCounter = (parseInt(this.vault._meta.lastCounter, 10) || 75) + 1;
+
+    let currentMax = parseInt(this.vault._meta.lastCounter, 10) || 81;
+
+    // Ispeziona gli ordini già registrati per garantire che il progressivo non torni mai indietro
+    for (const po of Object.values(this.processedOrders || {})) {
+      if (po.trackingNumber) {
+        const match = String(po.trackingNumber).match(/\d+$/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (!isNaN(num) && num > currentMax) {
+            currentMax = num;
+          }
+        }
+      }
+    }
+
+    this.vault._meta.lastCounter = currentMax + 1;
     this.saveVault();
 
     const carrier = this.vault._meta.carrier || 'UPS';
@@ -172,7 +188,7 @@ class KeysManager {
       this.vault._meta = {
         carrier: 'UPS',
         trackingPrefix: 'PLEASEREADEBAYMESSAGE',
-        lastCounter: 75
+        lastCounter: 81
       };
     }
     return this.vault._meta;
