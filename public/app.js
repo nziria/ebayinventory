@@ -22,6 +22,18 @@ function clearAuthToken() {
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
+// Risolve dinamicamente gli endpoint API su qualsiasi sottocartella o dominio (es. /ebay1/api/...)
+function getApiUrl(endpoint) {
+  if (typeof endpoint !== 'string' || !endpoint.startsWith('/api/')) return endpoint;
+  let base = window.location.pathname;
+  if (!base.endsWith('/')) {
+    base = base.substring(0, base.lastIndexOf('/') + 1);
+  }
+  if (!base.startsWith('/')) base = '/' + base;
+  const cleanEndpoint = endpoint.slice(1);
+  return base + cleanEndpoint;
+}
+
 // Intercettore Fetch per includere x-auth-token e risolvere percorsi su sottocartelle
 const originalFetch = window.fetch;
 window.fetch = async function(url, options = {}) {
@@ -35,20 +47,9 @@ window.fetch = async function(url, options = {}) {
     }
   }
 
-  // Risolve dinamicamente se l'app è ospitata su sottocartella (es. /ebay o /ebayinventory)
-  let resolvedUrl = url;
-  if (typeof url === 'string' && url.startsWith('/api/')) {
-    const rawPath = window.location.pathname;
-    const basePath = rawPath.endsWith('/') 
-      ? rawPath.slice(0, -1) 
-      : rawPath.replace(/\/[^\/]*\.[^\/]*$/, '');
-    if (basePath && basePath !== '/') {
-      resolvedUrl = `${basePath}${url}`;
-    }
-  }
-
+  const resolvedUrl = (typeof url === 'string' && url.startsWith('/api/')) ? getApiUrl(url) : url;
   const res = await originalFetch(resolvedUrl, options);
-  if (res.status === 401 && typeof url === 'string' && !url.includes('/api/auth/login') && !url.includes('/api/auth/verify')) {
+  if (res.status === 401 && typeof url === 'string' && !url.includes('/auth/login') && !url.includes('/auth/verify')) {
     showLockScreen();
   }
   return res;
@@ -1761,7 +1762,7 @@ async function checkAuthOnBoot() {
     return false;
   }
   try {
-    const res = await originalFetch('/api/auth/verify', {
+    const res = await originalFetch(getApiUrl('/api/auth/verify'), {
       headers: { 'x-auth-token': token }
     });
     const data = await res.json();
@@ -1793,7 +1794,7 @@ if (formAuthLogin) {
     }
 
     try {
-      const res = await originalFetch('/api/auth/login', {
+      const res = await originalFetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
@@ -1828,7 +1829,7 @@ if (btnLogout) {
     if (confirm('Vuoi bloccare la sessione e disconnetterti?')) {
       const token = getAuthToken();
       try {
-        await originalFetch('/api/auth/logout', {
+        await originalFetch(getApiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: { 'x-auth-token': token }
         });
