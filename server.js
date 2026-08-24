@@ -13,6 +13,20 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Middleware per normalizzare i percorsi quando l'app è montata su una sottocartella cPanel (es. /ebay1/...)
+app.use((req, res, next) => {
+  const knownPrefixes = ['/api', '/style.css', '/app.js', '/manifest.json', '/sw.js', '/icons', '/favicon.ico'];
+  for (const kp of knownPrefixes) {
+    const idx = req.url.indexOf(kp);
+    if (idx > 0) {
+      req.url = req.url.substring(idx);
+      break;
+    }
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const ENV_PATH = path.join(__dirname, '.env');
