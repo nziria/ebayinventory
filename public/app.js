@@ -22,7 +22,7 @@ function clearAuthToken() {
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
-// Intercettore Fetch per includere x-auth-token e gestire 401
+// Intercettore Fetch per includere x-auth-token e risolvere percorsi su sottocartelle
 const originalFetch = window.fetch;
 window.fetch = async function(url, options = {}) {
   options.headers = options.headers || {};
@@ -34,7 +34,20 @@ window.fetch = async function(url, options = {}) {
       options.headers['x-auth-token'] = token;
     }
   }
-  const res = await originalFetch(url, options);
+
+  // Risolve dinamicamente se l'app è ospitata su sottocartella (es. /ebay o /ebayinventory)
+  let resolvedUrl = url;
+  if (typeof url === 'string' && url.startsWith('/api/')) {
+    const rawPath = window.location.pathname;
+    const basePath = rawPath.endsWith('/') 
+      ? rawPath.slice(0, -1) 
+      : rawPath.replace(/\/[^\/]*\.[^\/]*$/, '');
+    if (basePath && basePath !== '/') {
+      resolvedUrl = `${basePath}${url}`;
+    }
+  }
+
+  const res = await originalFetch(resolvedUrl, options);
   if (res.status === 401 && typeof url === 'string' && !url.includes('/api/auth/login') && !url.includes('/api/auth/verify')) {
     showLockScreen();
   }
