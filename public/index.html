@@ -510,6 +510,7 @@
           <!-- Tab Navigation inside Vault -->
           <div class="vault-tabs">
             <button type="button" class="vault-tab-btn active" id="btnTabVaultKeys" onclick="switchVaultTab('keys')">📦 Carica Chiavi</button>
+            <button type="button" class="vault-tab-btn" id="btnTabVaultWarehouse" onclick="switchVaultTab('warehouse')">🗃️ Magazzino Tutte le Chiavi</button>
             <button type="button" class="vault-tab-btn" id="btnTabVaultTemplate" onclick="switchVaultTab('template')">✉️ Template Messaggio</button>
             <button type="button" class="vault-tab-btn" id="btnTabVaultHistory" onclick="switchVaultTab('history')">📜 Storico Consegne</button>
           </div>
@@ -540,6 +541,25 @@
               <div id="availableKeysList" class="keys-pill-container">
                 <span style="color: var(--text-muted); font-size: 0.8rem;">Nessuna chiave caricata.</span>
               </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: Magazzino Tutte le Chiavi (Attive & Archiviate) -->
+          <div id="vaultTabWarehouse" class="vault-tab-content hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 12px; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <strong style="font-size: 0.88rem; color: #93c5fd;">🗃️ Magazzino Completo Chiavi</strong>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Recupera, copia e sposta chiavi disponibili, anche da inserzioni eBay chiuse o disattivate.</p>
+              </div>
+              <button type="button" class="btn-secondary" id="btnRefreshWarehouse" onclick="renderWarehouseTab()" style="font-size: 0.75rem; padding: 5px 10px; font-weight: 600;">🔄 Ricarica</button>
+            </div>
+            
+            <div style="margin-bottom: 12px;">
+              <input type="text" id="inputSearchWarehouse" placeholder="🔍 Cerca per codice chiave, ID fornitore, titolo inserzione..." style="font-size: 0.8rem; width: 100%; padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.6); color: var(--text-main);">
+            </div>
+
+            <div id="vaultWarehouseContainer" style="display: flex; flex-direction: column; gap: 12px; max-height: 480px; overflow-y: auto; padding-right: 4px;">
+              <!-- Popolato dinamicamente da app.js -->
             </div>
           </div>
 
@@ -579,6 +599,41 @@
           </div>
 
         </div>
+      </div>
+    </div>
+
+    <!-- Modal Sposta / Trasferisci Chiavi -->
+    <div id="transferKeysModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h3>🔄 Sposta Chiavi su un'Altra Inserzione</h3>
+            <p class="modal-subtitle" id="transferModalSubtitle">Trasferisci le licenze disponibili</p>
+          </div>
+          <button class="btn-close-modal" id="btnCloseTransferModal">&times;</button>
+        </div>
+        <form id="formTransferKeys" class="modal-body">
+          <input type="hidden" id="transferSourceKey">
+          
+          <div class="form-group">
+            <label for="transferDestSelect">Inserzione di Destinazione:</label>
+            <select id="transferDestSelect" class="custom-select" style="width: 100%; padding: 8px 10px; font-size: 0.85rem;" required>
+              <!-- Popolato dinamicamente -->
+            </select>
+            <span class="field-help">Le chiavi verranno trasferite a questa inserzione e saranno pronte per la vendita automatica.</span>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px;">
+            <label>Chiavi che verranno trasferite:</label>
+            <div id="transferKeysPreview" style="max-height: 140px; overflow-y: auto; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; font-family: monospace; font-size: 0.82rem; color: #38bdf8; line-height: 1.6;">
+            </div>
+          </div>
+
+          <div class="modal-actions-row" style="margin-top: 16px;">
+            <button type="button" class="btn-secondary" id="btnCancelTransfer">Annulla</button>
+            <button type="submit" class="btn-primary" id="btnSubmitTransfer">🔄 Conferma Trasferimento</button>
+          </div>
+        </form>
       </div>
     </div>
 

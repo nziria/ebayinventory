@@ -1341,14 +1341,16 @@ function updateVaultHeaderBadge() {
 }
 
 window.switchVaultTab = function(tabName) {
-  const tabs = ['keys', 'template', 'history'];
+  const tabs = ['keys', 'warehouse', 'template', 'history'];
   tabs.forEach(t => {
     const btn = document.getElementById(`btnTabVault${t.charAt(0).toUpperCase() + t.slice(1)}`);
     const content = document.getElementById(`vaultTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
     if (btn) btn.classList.toggle('active', t === tabName);
     if (content) content.classList.toggle('hidden', t !== tabName);
   });
-  if (tabName === 'history') {
+  if (tabName === 'warehouse') {
+    renderWarehouseTab();
+  } else if (tabName === 'history') {
     loadVaultHistory();
   }
 };
@@ -1374,24 +1376,30 @@ window.openVaultModal = function(preferredTargetKey = null) {
 
   // Popola select
   selectVaultTarget.innerHTML = '';
+
+  // 1. Inserzioni attive
+  const activeOptGroup = document.createElement('optgroup');
+  activeOptGroup.label = '🟢 Inserzioni Attive su eBay';
+
+  const activeKeysSet = new Set();
+
   state.items.forEach(item => {
     if (item.hasVariations && item.variations && item.variations.length > 0) {
-      const optGroup = document.createElement('optgroup');
-      optGroup.label = item.title;
       item.variations.forEach(v => {
         const vKey = `${item.itemId}::${v.name.trim().toLowerCase()}`;
+        activeKeysSet.add(vKey);
         const vVault = state.vault[vKey];
         const count = vVault ? vVault.availableCount : 0;
         const opt = document.createElement('option');
         opt.value = vKey;
-        opt.textContent = `${v.name} (${count} chiavi nel Vault)`;
+        opt.textContent = `${item.title} [${v.name}] (${count} chiavi nel Vault)`;
         opt.dataset.title = `${item.title} [${v.name}]`;
         opt.dataset.sku = v.sku || '';
-        optGroup.appendChild(opt);
+        activeOptGroup.appendChild(opt);
       });
-      selectVaultTarget.appendChild(optGroup);
     } else {
       const iKey = String(item.itemId);
+      activeKeysSet.add(iKey);
       const iVault = state.vault[iKey];
       const count = iVault ? iVault.availableCount : 0;
       const opt = document.createElement('option');
@@ -1399,9 +1407,33 @@ window.openVaultModal = function(preferredTargetKey = null) {
       opt.textContent = `${item.title} (#${item.itemId}) (${count} chiavi nel Vault)`;
       opt.dataset.title = item.title;
       opt.dataset.sku = item.sku || '';
-      selectVaultTarget.appendChild(opt);
+      activeOptGroup.appendChild(opt);
     }
   });
+
+  if (activeOptGroup.children.length > 0) {
+    selectVaultTarget.appendChild(activeOptGroup);
+  }
+
+  // 2. Inserzioni archiviate / chiuse presenti nel Vault
+  const archivedOptGroup = document.createElement('optgroup');
+  archivedOptGroup.label = '🗄️ Inserzioni Archiviate / Chiuse (Recupero Chiavi)';
+
+  for (const [vKey, vVault] of Object.entries(state.vault || {})) {
+    if (vKey === '_meta') continue;
+    if (!activeKeysSet.has(vKey)) {
+      const opt = document.createElement('option');
+      opt.value = vKey;
+      opt.textContent = `[Archiviata] ${vVault.title || vKey} (#${vKey}) (${vVault.availableCount || 0} chiavi rimaste)`;
+      opt.dataset.title = vVault.title || vKey;
+      opt.dataset.sku = vVault.sku || '';
+      archivedOptGroup.appendChild(opt);
+    }
+  }
+
+  if (archivedOptGroup.children.length > 0) {
+    selectVaultTarget.appendChild(archivedOptGroup);
+  }
 
   if (preferredTargetKey && selectVaultTarget.querySelector(`option[value="${preferredTargetKey}"]`)) {
     selectVaultTarget.value = preferredTargetKey;
@@ -1787,6 +1819,240 @@ if (inputSearchVaultHistory) {
       (h.title && h.title.toLowerCase().includes(query))
     );
     renderVaultHistoryTable(filtered);
+  });
+}
+
+// ==========================================
+// WAREHOUSE & TRANSFER KEYS HANDLERS
+// ==========================================
+window.renderWarehouseTab = function() {
+  const container = document.getElementById('vaultWarehouseContainer');
+  if (!container) return;
+
+  const searchQuery = (document.getElementById('inputSearchWarehouse')?.value || '').toLowerCase().trim();
+
+  // Verifica quali chiavi sono attive su eBay
+  const activeItemKeys = new Set();
+  state.items.forEach(item => {
+    if (item.hasVariations && item.variations) {
+      item.variations.forEach(v => activeItemKeys.add(`${item.itemId}::${v.name.trim().toLowerCase()}`));
+    } else {
+      activeItemKeys.add(String(item.itemId));
+    }
+  });
+
+  const vaultEntries = Object.entries(state.vault || {}).filter(([k]) => k !== '_meta');
+
+  if (vaultEntries.length === 0) {
+    container.innerHTML = '<p class="empty-state" style="text-align: center; padding: 20px; color: var(--text-muted);">Nessuna chiave salvata nel magazzino.</p>';
+    return;
+  }
+
+  let html = '';
+
+  for (const [targetKey, vData] of vaultEntries) {
+    const isActive = activeItemKeys.has(targetKey);
+    const availableKeys = vData.availableKeys || [];
+    const deliveredKeysCount = (vData.keys || []).filter(k => k.status === 'delivered').length;
+
+    // Filtra per ricerca
+    let filteredKeys = availableKeys;
+    if (searchQuery) {
+      const matchItem = (vData.title || '').toLowerCase().includes(searchQuery) || targetKey.toLowerCase().includes(searchQuery);
+      if (!matchItem) {
+        filteredKeys = availableKeys.filter(k =>
+          (k.code || '').toLowerCase().includes(searchQuery) ||
+          (k.supplierOrderId || '').toLowerCase().includes(searchQuery)
+        );
+        if (filteredKeys.length === 0) continue;
+      }
+    }
+
+    html += `
+      <div class="warehouse-card" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span class="badge-tag ${isActive ? 'in-stock' : 'expired'}" style="font-size: 0.72rem; padding: 2px 7px;">
+                ${isActive ? '🟢 Inserzione Attiva' : '🗄️ Inserzione Chiusa / Disattivata'}
+              </span>
+              <strong style="font-size: 0.92rem; color: #f8fafc;">${escapeHtml(vData.title || 'Senza Titolo')}</strong>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3px;">
+              ID / Riferimento: <code style="color: #93c5fd; font-family: monospace;">${escapeHtml(targetKey)}</code> ${vData.sku ? `| SKU: ${escapeHtml(vData.sku)}` : ''}
+            </div>
+          </div>
+          
+          <div style="text-align: right;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: ${availableKeys.length > 0 ? '#34d399' : '#f87171'};">
+              ${availableKeys.length} Disponibili
+            </span>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">${deliveredKeysCount} Consegnate</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+          <button type="button" class="btn-secondary btn-sm" onclick="copyAllVaultKeys('${targetKey}')" style="font-size: 0.75rem; padding: 5px 10px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;" ${availableKeys.length === 0 ? 'disabled' : ''}>
+            📋 Copia Tutte (${availableKeys.length})
+          </button>
+          <button type="button" class="btn-primary btn-sm" onclick="openTransferModal('${targetKey}')" style="font-size: 0.75rem; padding: 5px 10px; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;" ${availableKeys.length === 0 ? 'disabled' : ''}>
+            🔄 Sposta su Altra Inserzione
+          </button>
+          <button type="button" class="btn-secondary btn-sm" onclick="openVaultModal('${targetKey}')" style="font-size: 0.75rem; padding: 5px 10px; font-weight: 600;">
+            ✏️ Gestisci nel Vault
+          </button>
+        </div>
+
+        <!-- Lista chiavi disponibili -->
+        <div class="warehouse-keys-list" style="display: flex; flex-wrap: wrap; gap: 6px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: var(--radius-sm); max-height: 130px; overflow-y: auto;">
+          ${filteredKeys.length > 0 ? filteredKeys.map(k => `
+            <span class="key-pill" style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; font-size: 0.78rem; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border-color); border-radius: 6px;">
+              <code style="color: #f1f5f9; font-weight: 600;">${escapeHtml(k.code)}</code>
+              ${k.supplierOrderId ? `<span style="color: #38bdf8; font-size: 0.7rem; background: rgba(56, 189, 248, 0.15); padding: 1px 5px; border-radius: 3px; font-weight: 600;" title="Ordine Fornitore">#${escapeHtml(k.supplierOrderId)}</span>` : ''}
+              <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(k.code)}'); showToast('📋 Chiave copiata!', 'success');" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 0.8rem; padding: 0 2px;" title="Copia singola chiave">📋</button>
+              <button type="button" class="btn-delete-key" onclick="deleteVaultKey('${targetKey}', '${k.id}')" title="Elimina chiave" style="color: #f87171; background: none; border: none; cursor: pointer; font-size: 0.9rem; font-weight: bold; margin-left: 2px;">&times;</button>
+            </span>
+          `).join('') : '<span style="font-size: 0.75rem; color: var(--text-muted); padding: 4px;">Nessuna chiave disponibile al momento.</span>'}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html || '<p class="empty-state" style="text-align: center; padding: 20px; color: var(--text-muted);">Nessuna chiave corrisponde alla ricerca.</p>';
+};
+
+window.copyAllVaultKeys = function(targetKey) {
+  const itemVault = state.vault[targetKey];
+  if (!itemVault || !itemVault.availableKeys || itemVault.availableKeys.length === 0) {
+    showToast('Nessuna chiave disponibile da copiare', 'info');
+    return;
+  }
+  const cleanList = itemVault.availableKeys.map(k => k.code).join('\n');
+  navigator.clipboard.writeText(cleanList);
+  showToast(`📋 Copiate ${itemVault.availableKeys.length} chiavi negli appunti!`, 'success');
+};
+
+window.openTransferModal = function(sourceTargetKey) {
+  const sourceVault = state.vault[sourceTargetKey];
+  if (!sourceVault || !sourceVault.availableKeys || sourceVault.availableKeys.length === 0) {
+    showToast('Nessuna chiave disponibile da trasferire per questo articolo', 'error');
+    return;
+  }
+
+  const modal = document.getElementById('transferKeysModal');
+  const sourceInput = document.getElementById('transferSourceKey');
+  const destSelect = document.getElementById('transferDestSelect');
+  const preview = document.getElementById('transferKeysPreview');
+  const subtitle = document.getElementById('transferModalSubtitle');
+
+  sourceInput.value = sourceTargetKey;
+  subtitle.textContent = `Da: "${sourceVault.title || sourceTargetKey}" (#${sourceTargetKey}) - ${sourceVault.availableKeys.length} chiavi disponibili`;
+
+  // Popola destinazioni con inserzioni attive (escludendo la sorgente)
+  destSelect.innerHTML = '';
+  state.items.forEach(item => {
+    if (item.hasVariations && item.variations && item.variations.length > 0) {
+      item.variations.forEach(v => {
+        const vKey = `${item.itemId}::${v.name.trim().toLowerCase()}`;
+        if (vKey !== sourceTargetKey) {
+          const opt = document.createElement('option');
+          opt.value = vKey;
+          opt.textContent = `${item.title} [${v.name}] (#${item.itemId})`;
+          opt.dataset.title = `${item.title} [${v.name}]`;
+          opt.dataset.sku = v.sku || '';
+          destSelect.appendChild(opt);
+        }
+      });
+    } else {
+      const iKey = String(item.itemId);
+      if (iKey !== sourceTargetKey) {
+        const opt = document.createElement('option');
+        opt.value = iKey;
+        opt.textContent = `${item.title} (#${item.itemId})`;
+        opt.dataset.title = item.title;
+        opt.dataset.sku = item.sku || '';
+        destSelect.appendChild(opt);
+      }
+    }
+  });
+
+  if (destSelect.options.length === 0) {
+    showToast('Non ci sono altre inserzioni attive disponibili come destinazione', 'error');
+    return;
+  }
+
+  preview.innerHTML = sourceVault.availableKeys.map(k => `
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 0;">
+      <span>🔑 ${escapeHtml(k.code)}</span>
+      ${k.supplierOrderId ? `<span style="font-size: 0.72rem; color: #c4b5fd;">[Fornitore #${escapeHtml(k.supplierOrderId)}]</span>` : ''}
+    </div>
+  `).join('');
+
+  modal.classList.remove('hidden');
+};
+
+const transferModal = document.getElementById('transferKeysModal');
+const btnCloseTransferModal = document.getElementById('btnCloseTransferModal');
+const btnCancelTransfer = document.getElementById('btnCancelTransfer');
+const formTransferKeys = document.getElementById('formTransferKeys');
+
+if (btnCloseTransferModal) {
+  btnCloseTransferModal.addEventListener('click', () => transferModal.classList.add('hidden'));
+}
+if (btnCancelTransfer) {
+  btnCancelTransfer.addEventListener('click', () => transferModal.classList.add('hidden'));
+}
+if (transferModal) {
+  transferModal.addEventListener('click', (e) => {
+    if (e.target === transferModal) transferModal.classList.add('hidden');
+  });
+}
+
+if (formTransferKeys) {
+  formTransferKeys.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sourceTargetKey = document.getElementById('transferSourceKey').value;
+    const destSelect = document.getElementById('transferDestSelect');
+    const destTargetKey = destSelect.value;
+    const selectedOpt = destSelect.options[destSelect.selectedIndex];
+    const destTitle = selectedOpt ? selectedOpt.dataset.title : '';
+    const destSku = selectedOpt ? selectedOpt.dataset.sku : '';
+
+    if (!sourceTargetKey || !destTargetKey) return;
+
+    const btnSubmit = document.getElementById('btnSubmitTransfer');
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = '⏳ Trasferimento...';
+
+    try {
+      const res = await fetch(getApiUrl('/api/vault/keys/transfer'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceTargetKey, destTargetKey, destTitle, destSku })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Errore nel trasferimento');
+
+      showToast(`🎉 Trasferite ${data.data.transferredCount} chiavi con successo su "${destTitle || destTargetKey}"!`, 'success');
+      transferModal.classList.add('hidden');
+      state.vault = data.vault;
+      updateVaultHeaderBadge();
+      renderWarehouseTab();
+      openVaultModal(destTargetKey);
+      applyFilterAndRender();
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = '🔄 Conferma Trasferimento';
+    }
+  });
+}
+
+const inputSearchWarehouse = document.getElementById('inputSearchWarehouse');
+if (inputSearchWarehouse) {
+  inputSearchWarehouse.addEventListener('input', () => {
+    renderWarehouseTab();
   });
 }
 

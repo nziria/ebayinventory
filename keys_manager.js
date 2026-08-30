@@ -248,6 +248,48 @@ class KeysManager {
   }
 
   /**
+   * Sposta chiavi disponibili da un'inserzione (es. chiusa/disattivata) a un'altra
+   */
+  transferKeys(sourceTargetKey, destTargetKey, keyIds = null, destTitle = '', destSku = '') {
+    const sourceVault = this.vault[sourceTargetKey];
+    if (!sourceVault || !sourceVault.keys) {
+      throw new Error('Inserzione di origine non trovata nel Vault');
+    }
+    const destVault = this.getOrCreateItemVault(destTargetKey, destTitle, destSku);
+
+    const keysToMove = [];
+    const remainingKeys = [];
+
+    for (const k of sourceVault.keys) {
+      const shouldMove = (k.status === 'available') && (!keyIds || keyIds.includes(k.id));
+      if (shouldMove) {
+        // Evita duplicati nella destinazione
+        const existsInDest = destVault.keys.some(dk => dk.code === k.code && dk.status === 'available');
+        if (!existsInDest) {
+          keysToMove.push(k);
+        }
+      } else {
+        remainingKeys.push(k);
+      }
+    }
+
+    sourceVault.keys = remainingKeys;
+    sourceVault.updatedAt = new Date().toISOString();
+
+    destVault.keys.push(...keysToMove);
+    destVault.updatedAt = new Date().toISOString();
+
+    this.saveVault();
+
+    return {
+      transferredCount: keysToMove.length,
+      keys: keysToMove,
+      sourceAvailable: sourceVault.keys.filter(k => k.status === 'available').length,
+      destAvailable: destVault.keys.filter(k => k.status === 'available').length
+    };
+  }
+
+  /**
    * Elimina una chiave specifica non ancora utilizzata
    */
   deleteKey(targetKey, keyId) {

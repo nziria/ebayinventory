@@ -776,6 +776,30 @@ app.delete('/api/vault/keys', (req, res) => {
 });
 
 /**
+ * POST /api/vault/keys/transfer
+ * Sposta chiavi disponibili da una inserzione (anche chiusa) a un'altra
+ */
+app.post('/api/vault/keys/transfer', (req, res) => {
+  try {
+    const { sourceTargetKey, destTargetKey, keyIds, destTitle, destSku } = req.body;
+    if (!sourceTargetKey || !destTargetKey) {
+      return res.status(400).json({ success: false, error: 'sourceTargetKey e destTargetKey sono obbligatori' });
+    }
+
+    const result = keysManager.transferKeys(sourceTargetKey, destTargetKey, keyIds, destTitle, destSku);
+    monitor.addLog('INFO', `Trasferite ${result.transferredCount} chiavi da "${sourceTargetKey}" a "${destTargetKey}".`);
+
+    res.json({
+      success: true,
+      data: result,
+      vault: keysManager.getAllVaultSummary()
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/vault/settings
  * Salva impostazioni di consegna, template e abilitazione per un prodotto
  */
