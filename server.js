@@ -877,8 +877,14 @@ app.post('/api/system/update', requireAuth, (req, res) => {
       }
     }
 
+    const token = (req.body.githubToken || process.env.GITHUB_TOKEN || config.githubToken || '').trim();
+    let repoUrl = 'https://github.com/nziria/ebayinventory.git';
+    if (token) {
+      repoUrl = `https://${token}@github.com/nziria/ebayinventory.git`;
+    }
+
     // Comando git pull sicuro
-    const gitCmd = `git config --global --add safe.directory "${__dirname.replace(/\\/g, '/')}" && git pull origin main`;
+    const gitCmd = `git config --global --add safe.directory "${__dirname.replace(/\\/g, '/')}" && git pull "${repoUrl}" main`;
 
     exec(gitCmd, { cwd: __dirname }, (error, stdout, stderr) => {
       // Ripristina i dati se necessario
@@ -902,9 +908,13 @@ app.post('/api/system/update', requireAuth, (req, res) => {
       if (error) {
         console.error('Errore git pull:', error.message, stderr);
         monitor.addLog('WARN', `Aggiornamento git: ${error.message || stderr}`);
+        let hint = '';
+        if (stderr && (stderr.includes('could not read Username') || stderr.includes('Authentication failed'))) {
+          hint = ' 👉 Il repository GitHub è Privato: per aggiornare con 1 click senza password, imposta il repository come "Public" su GitHub (Settings -> Change repository visibility -> Make public).';
+        }
         return res.json({
           success: false,
-          error: `Errore durante il download da GitHub: ${stderr || error.message}`,
+          error: `Errore durante il download da GitHub: ${stderr || error.message}.${hint}`,
           output: stdout
         });
       }
