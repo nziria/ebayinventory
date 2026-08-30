@@ -883,15 +883,15 @@ app.post('/api/system/update', requireAuth, (req, res) => {
       repoUrl = `https://${token}@github.com/nziria/ebayinventory.git`;
     }
 
-    // Comando git pull sicuro
-    const gitCmd = `git config --global --add safe.directory "${__dirname.replace(/\\/g, '/')}" && git pull "${repoUrl}" main`;
+    // Comando git fetch + reset --hard (elimina qualsiasi conflitto di merge garantendo l'aggiornamento pulito del codice)
+    const gitCmd = `git config --global --add safe.directory "${__dirname.replace(/\\/g, '/')}" && git fetch "${repoUrl}" main && git reset --hard FETCH_HEAD`;
 
     exec(gitCmd, { cwd: __dirname }, (error, stdout, stderr) => {
-      // Ripristina i dati se necessario
+      // Ripristina sempre e comunque i file di dati e credenziali dai backup
       for (const f of dataFiles) {
         const bak = path.join(backupDir, `${f}.bak`);
         const target = path.join(__dirname, f);
-        if (fs.existsSync(bak) && !fs.existsSync(target)) {
+        if (fs.existsSync(bak)) {
           fs.copyFileSync(bak, target);
         }
       }
